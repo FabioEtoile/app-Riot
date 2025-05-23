@@ -1,0 +1,251 @@
+<master-component>
+    <nav class="navbar">
+      <div class="navbar-container">
+        <div class="logo-container">
+          <div class="logo" onclick={goHome}>🎧 Music App</div>
+          <a href="#/favorites" class="favorites-link" if={props.loggedIn}>
+            ⭐ ({state.favorites.length})
+          </a>
+        </div>
+        <button class="btn-login" onclick={onLogin} if={!props.loggedIn}>Connexion / Inscription</button>
+        <button class="btn-logout" onclick={onLogout} if={props.loggedIn}>Déconnexion</button>
+        </div>
+    </nav>
+  
+    <div class="release-container" if={state.master}>
+      <h1>{state.master.title}</h1>
+      <p class="format-date">{state.master.year || 'Année inconnue'}</p>
+  
+      <p class="note" if={state.master.community?.rating}>
+        {state.master.community.rating.average}⭐ ({state.master.community.rating.count} votes)
+      </p>
+  
+      <div class="main-info">
+        <div class="release-cover">
+          <img src={state.master.images?.[0]?.uri || 'https://via.placeholder.com/300'} alt="cover"
+               onerror="this.src='https://via.placeholder.com/300'">
+        </div>
+  
+        <div class="collapsible">
+          <details>
+            <h3>Track list</h3>
+            <ul>
+              <li each={track in state.master.tracklist}>
+                <strong>{track.position}</strong> - {track.title} - {track.duration}
+              </li>
+            </ul>
+          </details>
+  
+          <div class="genres">
+            <span class="tag" each={genre in state.master.genres}>{genre}</span>
+          </div>
+        </div>
+      </div>
+  
+      <div class="collapsible">
+        <details>
+          <summary>Crédits</summary>
+          <ul>
+            <li each={credit in state.master.extraartists}>
+              {credit.name} - {credit.role}
+            </li>
+          </ul>
+        </details>
+  
+        <details>
+          <summary>Notes</summary>
+          <p>{state.master.notes || "Pas de notes disponibles."}</p>
+        </details>
+  
+        <details>
+          <summary>Artistes</summary>
+          <ul>
+            <li each={artist in state.master.artists}>
+              {artist.name}
+            </li>
+          </ul>
+        </details>
+      </div>
+    </div>
+  
+    <p if={!state.master}>Chargement en cours...</p>
+  
+    <script>
+      import { getMasterDetails } from '../services/discogs'
+      import { getFavorites } from '../services/favorites'
+      import { observeAuthState } from '../services/firebase-auth'
+  
+      export default {
+        state: {
+          master: null,
+          loggedIn: false,
+          favorites: []
+        },
+  
+        async onMounted() {
+          const id = window.location.hash.split('/')[2]
+  
+          observeAuthState(async user => {
+            if (user) {
+              const favs = await getFavorites()
+              this.update({ loggedIn: true, favorites: favs })
+            } else {
+              this.update({ loggedIn: false, favorites: [] })
+            }
+          })
+  
+          try {
+            const data = await getMasterDetails(id)
+            this.update({ master: data })
+          } catch (e) {
+            console.error("Erreur chargement master", e)
+          }
+        },
+  
+        goHome() {
+          window.location.hash = "/"
+        },
+  
+        onLogin() {
+          this.props.onShowLogin?.()
+        },
+  
+        onLogout() {
+          this.props.onLogout?.()
+        }
+      }
+    </script>
+  
+    <style>
+      .navbar {
+        background-color: #1f2937;
+        color: #fff;
+        padding: 15px 0;
+        position: sticky;
+        top: 0;
+        z-index: 100;
+        box-shadow: 0 3px 8px rgba(0,0,0,0.15);
+      }
+  
+      .navbar-container {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        max-width: 1200px;
+        margin: 0 auto;
+        width: 90%;
+      }
+  
+      .logo {
+        font-size: 1.4rem;
+        font-weight: 700;
+        cursor: pointer;
+        color: white;
+      }
+  
+      .logo-container {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+  
+      .favorites-link {
+        margin-left: 1rem;
+        font-size: 1.5rem;
+        text-decoration: none;
+        color: gold;
+        transition: transform 0.2s;
+      }
+  
+      .favorites-link:hover {
+        transform: scale(1.2);
+      }
+  
+      .search-container {
+        display: flex;
+        gap: 6px;
+        width: 50%;
+      }
+  
+      button {
+        background-color: #3b82f6;
+        color: white;
+        cursor: pointer;
+        padding: 8px 12px;
+        border-radius: 5px;
+        border: none;
+      }
+  
+      .btn-login {
+        background-color: #22c55e;
+      }
+  
+      .btn-logout {
+        background-color: #e3342f;
+      }
+  
+      .release-container {
+        max-width: 1000px;
+        margin: 40px auto;
+        padding: 20px;
+        font-family: 'Segoe UI', sans-serif;
+      }
+  
+      h1 {
+        font-size: 2rem;
+        margin-bottom: 0.5rem;
+      }
+  
+      .format-date {
+        color: #555;
+      }
+  
+      .note {
+        color: #16a34a;
+        margin-bottom: 20px;
+      }
+  
+      .main-info {
+        display: flex;
+        gap: 30px;
+        margin-top: 20px;
+      }
+  
+      .release-cover img {
+        width: 300px;
+        height: auto;
+        border-radius: 8px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+      }
+  
+      .genres {
+        margin-top: 15px;
+      }
+  
+      .tag {
+        background-color: #1f2937;
+        color: white;
+        padding: 4px 10px;
+        margin-right: 5px;
+        border-radius: 5px;
+        font-size: 0.85rem;
+        display: inline-block;
+      }
+  
+      .collapsible {
+        margin-top: 20px;
+      }
+  
+      details {
+        margin-bottom: 10px;
+        border-top: 1px solid #ccc;
+        padding-top: 10px;
+      }
+  
+      summary {
+        font-weight: bold;
+        cursor: pointer;
+      }
+    </style>
+  </master-component>
+  

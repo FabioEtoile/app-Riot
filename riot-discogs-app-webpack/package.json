@@ -1,0 +1,31 @@
+{
+  "name": "riot-discogs-app-webpack",
+  "version": "1.0.0",
+  "description": "Projet Riot.js + Firebase + Discogs avec Webpack",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "webpack serve --open",
+    "build": "webpack"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@riotjs/route": "^9.2.2",
+    "firebase": "^11.6.0",
+    "riot": "^9.4.7"
+  },
+  "devDependencies": {
+    "@babel/core": "^7.27.1",
+    "@babel/preset-env": "^7.27.2",
+    "@riotjs/webpack-loader": "^9.0.1",
+    "babel-loader": "^10.0.0",
+    "css-loader": "^7.1.2",
+    "dotenv-webpack": "^8.1.0",
+    "html-webpack-plugin": "^5.6.3",
+    "style-loader": "^4.0.0",
+    "webpack": "^5.99.9",
+    "webpack-cli": "^6.0.1",
+    "webpack-dev-server": "^5.2.1"
+  }
+}

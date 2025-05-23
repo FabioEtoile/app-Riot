@@ -1,0 +1,258 @@
+<favorites-component>
+  <nav class="navbar">
+    <div class="navbar-container">
+      <div class="logo-container">
+        <div class="logo" onclick={goHome}>🎧 Music App</div>
+        <a href="#/favorites" class="favorites-link" if={state.loggedIn} title="Mes favoris">
+          ⭐ ({state.favorites.length})
+        </a>
+      </div>
+
+      <div class="search-container">
+        <select onchange={updateType} value={state.type}>
+          <option value="all">Où</option>
+          <option value="release">Release</option>
+          <option value="master">Master</option>
+          <option value="artist">Artiste</option>
+        </select>
+        <input type="text" placeholder="Rechercher un favori..." value={state.search} oninput={updateSearch}>
+        <button onclick={searchAlbums}>Chercher</button>
+      </div>
+
+      <button class="btn-logout" onclick={onLogout} if={props.loggedIn}>Déconnexion</button>
+    </div>
+  </nav>
+
+  <div class="main-container">
+    <p class="total-results">{filteredFavorites.length} favori(s) trouvé(s)</p>
+
+    <div class="albums">
+      <div class="album" each={fav in filteredFavorites} onclick={() => handleClick(fav)}>
+        <div class="album-header">
+          <span class="fav-icon" onclick={(e) => { e.stopPropagation(); toggleFavorite(fav); }}>⭐</span>
+          <span class="album-title">{fav.title}</span>
+        </div>
+        <img src={fav.cover_image || 'https://via.placeholder.com/200'} alt="{fav.title}">
+      </div>
+    </div>
+  </div>
+
+  <script>
+    import { getFavorites, removeFavorite } from '../services/favorites'
+    import { observeAuthState } from '../services/firebase-auth'
+
+    export default {
+      state: {
+        favorites: [],
+        search: '',
+        type: 'release',
+        loggedIn: false
+      },
+
+      async toggleFavorite(item) {
+        try {
+          await removeFavorite(item)
+          const updated = this.state.favorites.filter(fav => fav.id !== item.id)
+          this.update({ favorites: updated })
+        } catch (e) {
+          console.warn("Impossible de supprimer le favori :", e)
+        }
+      },
+
+      async onMounted() {
+        observeAuthState(async user => {
+          if (user) {
+            const favs = await getFavorites()
+            this.update({ loggedIn: true, favorites: favs })
+          } else {
+            this.update({ loggedIn: false, favorites: [] })
+          }
+        })
+      },
+
+      get filteredFavorites() {
+        const term = this.state.search.toLowerCase()
+        return this.state.favorites.filter(f => f.title.toLowerCase().includes(term))
+      },
+
+      updateSearch(e) {
+        this.update({ search: e.target.value })
+      },
+
+      updateType(e) {
+        this.update({ type: e.target.value })
+      },
+
+      goHome() {
+        window.location.hash = "/"
+      },
+
+      handleClick(item) {
+          if (item.type === 'artist') {
+            this.props.onShowArtist?.(item.id);
+          } else if (item.type === 'master') {
+            window.location.hash = `#/master/${item.id}`;
+          } else {
+            window.location.hash = `#/release/${item.id}`;
+          }
+        },
+
+      onLogout() {
+        this.props.onLogout?.()
+        window.location.hash = '/'
+      }
+    }
+  </script>
+
+  <style scoped>
+    @import './home-component.riot';
+
+    .total-results {
+      font-size: 1.2rem;
+      text-align: center;
+      margin-bottom: 20px;
+    }
+
+    .albums {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 25px;
+    }
+
+    .album {
+      background-color: white;
+      padding: 12px;
+      border-radius: 10px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 10px;
+      cursor: pointer;
+    }
+
+    .album img {
+      width: 100%;
+      height: 200px;
+      object-fit: cover;
+      border-radius: 8px;
+      margin-top: 10px;
+    }
+
+    .album-header {
+      display: flex;
+      align-items: center;
+      justify-content: flex-start;
+      gap: 8px;
+      font-weight: 600;
+      font-size: 14px;
+      color: #111827;
+      width: 100%;
+    }
+
+    .album-title {
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      overflow: hidden;
+      flex: 1;
+    }
+
+    .fav-icon {
+      font-size: 18px;
+      color: #f59e0b;
+      cursor: pointer;
+      user-select: none;
+    }
+
+    .navbar {
+      background-color: #1f2937;
+      color: #fff;
+      padding: 15px 0;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      box-shadow: 0 3px 8px rgba(0,0,0,0.15);
+    }
+
+    .navbar-container {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      max-width: 1200px;
+      margin: 0 auto;
+      width: 90%;
+    }
+
+    .logo {
+      font-size: 1.4rem;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    .logo-container {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      color: white;
+    }
+
+    .favorites-link {
+      margin-left: 1rem;
+      font-size: 1.5rem;
+      text-decoration: none;
+      color: gold;
+      transition: transform 0.2s;
+    }
+
+    .favorites-link:hover {
+      transform: scale(1.2);
+    }
+
+    .search-container {
+      display: flex;
+      gap: 6px;
+      width: 50%;
+    }
+
+    select, input, button {
+      padding: 8px 10px;
+      border-radius: 4px;
+      border: none;
+      font-size: 0.95rem;
+    }
+
+    select, input {
+      flex: 1;
+    }
+
+    button {
+      background-color: #3b82f6;
+      color: white;
+      cursor: pointer;
+    }
+
+    .btn-login {
+      background-color: #22c55e;
+      padding: 8px 12px;
+      border-radius: 5px;
+      cursor: pointer;
+      color: #fff;
+      font-weight: 600;
+    }
+
+    .btn-logout {
+      background-color: #e3342f;
+      padding: 8px 12px;
+      border-radius: 5px;
+      cursor: pointer;
+      color: #fff;
+      font-weight: 600;
+    }
+
+    .main-container {
+      max-width: 1200px;
+      margin: 40px auto;
+      padding: 20px;
+    }
+  </style>
+</favorites-component>

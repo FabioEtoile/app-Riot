@@ -1,0 +1,262 @@
+<auth-component>
+  <!-- NAVBAR visible au-dessus -->
+  <nav class="navbar">
+    <div class="navbar-container">
+      <div class="logo" onclick={goHome}>🎧 Music App</div>
+    </div>
+  </nav>
+
+  <!-- Formulaire centré -->
+  <div class="auth-overlay">
+    <div class="auth-container">
+      <h2>{ state.isLogin ? 'Connexion' : 'Inscription' }</h2>
+
+      <!-- Formulaire Connexion -->
+      <form class="auth-form" if={state.isLogin} onsubmit={preventSubmit}>
+        <input type="email" placeholder="Adresse mail" value={state.signIn.email} oninput={updateSignInField('email')}>
+        <input type="password" placeholder="Mot de passe" value={state.signIn.password} oninput={updateSignInField('password')}>
+        <button type="submit" onclick={onSubmitSignIn}>Se connecter</button>
+      </form>
+
+      <!-- Formulaire Inscription -->
+      <form class="auth-form" if={!state.isLogin} onsubmit={preventSubmit}>
+        <input type="text" placeholder="Prénom" value={state.signUp.firstName} oninput={updateSignUpField('firstName')}>
+        <input type="text" placeholder="Nom" value={state.signUp.lastName} oninput={updateSignUpField('lastName')}>
+        <input type="text" placeholder="Pseudo" value={state.signUp.pseudo} oninput={updateSignUpField('pseudo')}>
+        <input type="email" placeholder="Adresse mail" value={state.signUp.email} oninput={updateSignUpField('email')}>
+        <input type="password" placeholder="Mot de passe" value={state.signUp.password} oninput={updateSignUpField('password')}>
+        <input type="password" placeholder="Confirmation mot de passe" value={state.signUp.confirmPassword} oninput={updateSignUpField('confirmPassword')}>
+        <button type="submit" onclick={onSubmitSignUp}>S'inscrire</button>
+      </form>
+
+      <p class="toggle-link" onclick={toggleMode}>
+        { state.isLogin ? "Pas encore inscrit ? S'inscrire" : "Déjà un compte ? Se connecter" }
+      </p>
+      <p class="error-msg" if={state.errorMsg}>{ state.errorMsg }</p>
+    </div>
+  </div>
+
+  <script>
+    import { registerUser, loginUser } from '../services/firebase-auth'
+
+    export default {
+      state: {
+        isLogin: true, 
+        signUp: {
+          firstName: '',
+          lastName: '',
+          pseudo: '',
+          email: '',
+          password: '',
+          confirmPassword: ''
+        },
+        signIn: {
+          email: '',
+          password: ''
+        },
+        errorMsg: ''
+      },
+
+      toggleMode() {
+        // Bascule entre Connexion et Inscription
+        this.update({
+          isLogin: !this.state.isLogin,
+          errorMsg: ''
+        })
+      },
+
+      // Évite le rechargement de la page si on appuie sur Enter
+      preventSubmit(e) {
+        e.preventDefault()
+      },
+
+      updateSignUpField(field) {
+        return (e) => {
+          this.update({
+            signUp: {
+              ...this.state.signUp,
+              [field]: e.target.value
+            }
+          })
+        }
+      },
+
+      updateSignInField(field) {
+        return (e) => {
+          this.update({
+            signIn: {
+              ...this.state.signIn,
+              [field]: e.target.value
+            }
+          })
+        }
+      },
+
+      async onSubmitSignUp() {
+        const { email, password, confirmPassword } = this.state.signUp
+        if (!email || !password || !confirmPassword) {
+          this.update({ errorMsg: "Veuillez remplir tous les champs obligatoires." })
+          return
+        }
+        if (password !== confirmPassword) {
+          this.update({ errorMsg: "Les mots de passe ne correspondent pas." })
+          return
+        }
+        try {
+          await registerUser(email, password)
+          this.update({ errorMsg: '' })
+          this.props.onLoginSuccess?.()
+        } catch (error) {
+          this.update({ errorMsg: error.message })
+        }
+      },
+
+      async onSubmitSignIn() {
+        const { email, password } = this.state.signIn
+        if (!email || !password) {
+          this.update({ errorMsg: "Veuillez renseigner votre email et votre mot de passe." })
+          return
+        }
+        try {
+          await loginUser(email, password)
+          this.update({ errorMsg: '' })
+          this.props.onLoginSuccess?.()
+        } catch (error) {
+          this.update({ errorMsg: error.message })
+        }
+      },
+
+      goHome() {
+        this.props.onLogout?.()
+        window.location.hash = '/'
+      }
+
+    }
+  </script>
+
+  <style>
+    html, body {
+      margin: 0;
+      padding: 0;
+    }
+
+    .auth-container {
+      background-color: #374151; 
+      border-radius: 10px;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+      max-width: 420px;
+      width: 90%;
+      color: #fff;
+
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 2rem;
+      gap: 1rem;
+    }
+
+    h2 {
+      margin: 0;
+      color: #fff;
+      font-size: 1.4rem;
+    }
+
+    .auth-form {
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+      width: 100%; 
+      box-sizing: border-box;
+    }
+    .auth-form * {
+      box-sizing: border-box;
+    }
+
+    .auth-form input {
+      border: none;
+      background-color: #1f2937;  
+      color: #fff;
+      font-size: 1rem;
+      outline: none;
+      padding: 10px;
+      border-radius: 5px;
+      width: 100%;
+    }
+    .auth-form input::placeholder {
+      color: #9ca3af;
+    }
+
+    .auth-form button {
+      border: none;
+      border-radius: 5px;
+      background-color: #3b82f6; 
+      color: #fff;
+      cursor: pointer;
+      font-size: 1rem;
+      font-weight: 600;
+      padding: 12px;
+      transition: background-color 0.3s;
+      width: 100%;
+    }
+    .auth-form button:hover {
+      background-color: #2563eb;
+    }
+
+    .toggle-link {
+      cursor: pointer;
+      text-decoration: underline;
+      color: #93c5fd;
+      margin-top: 0.5rem;
+      text-align: center;
+    }
+
+    .error-msg {
+      margin-top: 0.5rem;
+      text-align: center;
+      color: #f87171; 
+      font-weight: bold;
+    }
+
+    .navbar {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      background-color: #1f2937;
+      color: white;
+      padding: 15px 0;
+      z-index: 1000;
+      box-shadow: 0 3px 8px rgba(0,0,0,0.15);
+    }
+
+    .navbar-container {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      max-width: 1200px;
+      margin: 0 auto;
+      width: 90%;
+    }
+
+    .logo {
+      font-size: 1.4rem;
+      font-weight: 700;
+      cursor: pointer;
+      color: white;
+    }
+
+    .auth-overlay {
+      position: absolute;
+      top: 60px; /* Décalé pour laisser apparaître la navbar */
+      bottom: 0;
+      left: 0;
+      right: 0;
+      background-color: #2d3748;
+      z-index: 500;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: 'Segoe UI', sans-serif;}
+
+  </style>
+</auth-component>

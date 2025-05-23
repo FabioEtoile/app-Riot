@@ -1,0 +1,136 @@
+<app>
+  <!-- Favorites -->
+  <favorites-component
+  if={state.hash === '#/favorites'}
+  loggedIn={state.loggedIn}
+  onLogout={onLogout}
+  onShowRelease={onShowRelease}
+  onShowArtist={onShowArtist}
+  onShowMaster={onShowMaster} />
+
+
+  <!-- Home -->
+  <home-component
+    if={!state.showLogin && state.hash === '#/'}
+    loggedIn={state.loggedIn}
+    onShowLogin={showLogin}
+    onShowArtist={onShowArtist}
+    onShowRelease={onShowRelease}
+    onShowMaster={onShowMaster}
+    onLogout={onLogout} />
+
+  <!-- Auth -->
+  <auth-component
+    if={state.showLogin}
+    onLoginSuccess={onLoginSuccess}
+    onLogout={onLogout} />
+
+  <!-- Release -->
+  <release-component
+    if={state.hash.startsWith('#/release/')}
+    loggedIn={state.loggedIn}
+    onShowLogin={showLogin}
+    onLogout={onLogout} />
+
+  <!-- Artist -->
+  <artist-component
+  if={state.hash.startsWith('#/artist/')}
+  key={state.currentArtistId}
+  artistId={state.currentArtistId}
+  loggedIn={state.loggedIn}
+  onShowReleases={onShowReleases}
+  onBack={onBackFromArtist} />
+
+<!-- Master -->
+<master-component
+  if={state.hash.startsWith('#/master/')}
+  onShowLogin={showLogin}
+  onLogout={onLogout}
+  loggedIn={state.loggedIn} />
+
+
+
+  <script>
+    import HomeComponent from './home-component.riot'
+    import AuthComponent from './auth-component.riot'
+    import FavoritesComponent from './favorites-component.riot'
+    import ReleaseComponent from './release-component.riot'
+    import ArtistComponent from './artist-component.riot'
+    import { observeAuthState } from '../services/firebase-auth'
+    import MasterComponent from './master-component.riot'
+
+    export default {
+      state: {
+        loggedIn: false,
+        showLogin: false,
+        hash: window.location.hash || '#/',
+        currentArtistId: null,
+        currentReleaseId: null,
+        currentMasterId: null
+      },
+
+      components: {
+        'home-component': HomeComponent,
+        'auth-component': AuthComponent,
+        'favorites-component': FavoritesComponent,
+        'release-component': ReleaseComponent,
+        'artist-component': ArtistComponent,
+        'master-component': MasterComponent
+      },
+
+      onMounted() {
+        observeAuthState(user => {
+          this.update({ loggedIn: !!user })
+        })
+
+        window.addEventListener('hashchange', () => {
+          const currentHash = window.location.hash || '#/';
+          const parts = currentHash.split('/');
+          this.update({
+            hash: currentHash,
+            currentArtistId: currentHash.startsWith('#/artist/') ? parts[2] : null,
+            currentReleaseId: currentHash.startsWith('#/release/') ? parts[2] : null,
+            currentMasterId: currentHash.startsWith('#/master/') ? parts[2] : null
+          });
+        });
+      },
+
+      showLogin() {
+        this.update({ showLogin: true })
+      },
+
+      onLoginSuccess() {
+        this.update({ loggedIn: true, showLogin: false })
+      },
+
+      onLogout() {
+        this.update({
+          loggedIn: false,
+          showLogin: false,
+          currentArtistId: null,
+          currentReleaseId: null
+        });
+      },
+
+      onShowArtist(artistId) {
+        window.location.hash = `#/artist/${artistId}`
+      },
+
+      onShowRelease(releaseId) {
+        window.location.hash = `#/release/${releaseId}`
+      },
+
+      onBackFromArtist() {
+        window.location.hash = '#/'
+      },
+
+      onBackFromRelease() {
+        window.location.hash = '#/'
+      },
+
+      onShowReleases(artistId) {
+        console.log("Afficher les releases pour l'artiste :", artistId)
+      }
+    }
+  </script>
+</app>

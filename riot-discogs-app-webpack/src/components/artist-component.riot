@@ -1,0 +1,211 @@
+<artist-component>
+  <nav class="navbar">
+    <div class="navbar-container">
+      <div class="logo-container">
+        <div class="logo" onclick={goHome}>🎧 Music App</div>
+        <a href="#/favorites" class="favorites-link" if={props.loggedIn}>
+          ⭐ ({state.favorites.length})
+        </a>
+      </div>
+
+      <button class="btn-login" onclick={onLogin} if={!props.loggedIn}>Connexion / Inscription</button>
+      <button class="btn-logout" onclick={onLogout} if={props.loggedIn}>Déconnexion</button>
+    </div>
+  </nav>
+
+  <div class="release-container" if={state.artist}>
+    <h1>{state.artist.name}</h1>
+
+    <div class="main-info">
+      <div class="release-cover">
+        <img src={state.artist.image || 'https://via.placeholder.com/300'} alt={state.artist.name}>
+      </div>
+
+      <div class="collapsible">
+        <details open>
+          <summary>Biographie</summary>
+          <p>{state.artist.biography || "Pas de biographie disponible."}</p>
+        </details>
+      </div>
+    </div>
+
+    <button class="releases-link" onclick={goToReleases}>Voir les releases</button>
+    <button class="back-btn" onclick={goBack}>← Retour</button>
+  </div>
+
+  <p if={!state.artist}>Chargement en cours...</p>
+
+  <script>
+    import { getFavorites } from '../services/favorites'
+    import { getArtist } from '../services/discogs'
+    import { observeAuthState } from '../services/firebase-auth'
+
+    export default {
+      state: {
+        artist: null,
+        favorites: [],
+        favoritesLoaded: false
+      },
+
+      async onMounted() {
+        const id = this.props.artistId
+        if (this.props.loggedIn && !this.state.favoritesLoaded) {
+          try {
+            const favs = await getFavorites()
+            this.update({ favorites: favs, favoritesLoaded: true })
+          } catch (e) {
+            console.warn("Erreur chargement favoris :", e.message)
+          }
+        }
+
+        try {
+          const artistData = await getArtist(id)
+          this.update({ artist: artistData })
+        } catch (e) {
+          console.error('Erreur de chargement artiste :', e)
+        }
+      },
+
+      goToReleases() {
+        this.props.onShowReleases?.(this.props.artistId)
+      },
+
+      goBack() {
+        this.props.onBack?.()
+      },
+
+      goHome() {
+        window.location.hash = '/'
+      },
+
+      onLogin() {
+        this.props.onShowLogin?.()
+      },
+
+      onLogout() {
+        this.props.onLogout?.()
+      }
+    }
+  </script>
+
+  <style>
+    .navbar {
+      background-color: #1f2937;
+      color: #fff;
+      padding: 15px 0;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      box-shadow: 0 3px 8px rgba(0,0,0,0.15);
+    }
+
+    .navbar-container {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      max-width: 1200px;
+      margin: 0 auto;
+      width: 90%;
+    }
+
+    .logo {
+      font-size: 1.4rem;
+      font-weight: 700;
+      cursor: pointer;
+      color: white;
+    }
+
+    .logo-container {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .favorites-link {
+      margin-left: 1rem;
+      font-size: 1.5rem;
+      text-decoration: none;
+      color: gold;
+      transition: transform 0.2s;
+    }
+
+    .favorites-link:hover {
+      transform: scale(1.2);
+    }
+
+    .btn-login {
+      background-color: #22c55e;
+      padding: 8px 12px;
+      border-radius: 5px;
+      color: #fff;
+      font-weight: 600;
+    }
+
+    .btn-logout {
+      background-color: #e3342f;
+      padding: 8px 12px;
+      border-radius: 5px;
+      color: #fff;
+      font-weight: 600;
+    }
+
+    .release-container {
+      max-width: 1000px;
+      margin: 40px auto;
+      padding: 20px;
+      font-family: 'Segoe UI', sans-serif;
+    }
+
+    .main-info {
+      display: flex;
+      gap: 30px;
+      margin-top: 20px;
+    }
+
+    .release-cover img {
+      width: 300px;
+      height: auto;
+      border-radius: 8px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    }
+
+    .collapsible {
+      flex: 1;
+    }
+
+    details {
+      margin-bottom: 10px;
+      border-top: 1px solid #ccc;
+      padding-top: 10px;
+    }
+
+    summary {
+      font-weight: bold;
+      cursor: pointer;
+    }
+
+    .releases-link {
+      margin-top: 20px;
+      padding: 10px 15px;
+      background-color: #3b82f6;
+      color: #fff;
+      border: none;
+      border-radius: 5px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    .releases-link:hover {
+      background-color: #2563eb;
+    }
+
+    .back-btn {
+      margin-top: 10px;
+      padding: 8px 16px;
+      background-color: #ccc;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+  </style>
+</artist-component>

@@ -1,0 +1,353 @@
+<home-component>
+  <nav class="navbar">
+    <div class="navbar-container">
+      <div class="logo-container">
+        <div class="logo" onclick={goHome}>🎧 Music App</div>
+        <a href="#/favorites" class="favorites-link" if={props.loggedIn} title="Mes favoris">
+          ⭐ ({state.favorites.length})
+        </a>
+      </div>
+
+      <div class="search-container">
+        <select onchange={updateType} value={state.type}>
+          <option value="all">Où</option>
+          <option value="release">Release</option>
+          <option value="master">Master</option>
+          <option value="artist">Artiste</option>
+        </select>
+        <input type="text" placeholder="Rechercher..." value={state.search} oninput={updateSearch}>
+        <button onclick={searchAlbums}>Chercher</button>
+      </div>
+
+      <button class="btn-login" onclick={onLogin} if={!props.loggedIn}>Connexion / Inscription</button>
+      <button class="btn-logout" onclick={onLogout} if={props.loggedIn}>Déconnexion</button>
+    </div>
+  </nav>
+
+  <div class="main-container">
+    <p class="total-results">{state.totalResults} résultats trouvés</p>
+
+    <div class="albums">
+      <div class="album" each={item in state.releases} onclick={() => handleClick(item)}>
+        <div class="album-header">
+          <span class="fav-icon" if={props.loggedIn} onclick={(e) => { e.stopPropagation(); toggleFavorite(item); }}>
+            { isFavorited(item) ? '⭐' : '☆' }
+          </span>
+          <span class="album-title">{item.title}</span>
+        </div>
+        <img src={item.cover_image || item.thumb || 'https://via.placeholder.com/200'} alt="{item.title}">
+      </div>
+    </div>
+
+    <div class="pagination">
+      <button onclick={firstPage} disabled={state.page <= 1}>⏮️ Première</button>
+      <button onclick={prevPage} disabled={state.page <= 1}>← Précédent</button>
+      <span>Page {state.page} / {Math.ceil(state.totalResults / 100)}</span>
+      <button onclick={nextPage} disabled={state.page * 100 >= state.totalResults}>Suivant →</button>
+    </div>
+
+    <div if={props.loggedIn && state.favorites.length} class="favorites">
+      <h3>🎵 Mes Favoris</h3>
+      <ul>
+        <li each={fav in state.favorites}>
+          {fav.title} <em>({fav.type})</em>
+        </li>
+      </ul>
+    </div>
+  </div>
+
+  <script>
+    import { searchDiscogs, getResourceIdFromUrl } from '../services/discogs';
+    import { getFavorites, addFavorite, removeFavorite } from '../services/favorites';
+
+    export default {
+      state: {
+        search: 'rock',
+        type: 'release', 
+        releases: [],
+        page: 1,
+        totalResults: 0,
+        favorites: []
+      },
+
+      async onMounted() {
+        await this.searchAlbums();
+        if (this.props.loggedIn) {
+          try {
+            const favs = await getFavorites();
+            this.update({ favorites: favs });
+          } catch (e) {
+            console.warn("Erreur chargement favoris :", e.message);
+          }
+        }
+      },
+
+      updateSearch(e) {
+        this.update({ search: e.target.value });
+      },
+
+      updateType(e) {
+        this.update({ type: e.target.value });
+      },
+
+      async searchAlbums() {
+        try {
+          const results = await searchDiscogs(this.state.search, this.state.type, this.state.page, 100);
+          let filteredResults = results.results || [];
+          if (this.state.type === 'artist') {
+            filteredResults = filteredResults.filter(item => item.type === 'artist');
+            filteredResults.sort((a, b) => (b.score || 0) - (a.score || 0));
+          }
+          this.update({
+            releases: filteredResults,
+            totalResults: results.pagination.items
+          });
+        } catch (error) {
+          console.error('Erreur recherche', error);
+        }
+      },
+
+      async nextPage() {
+        if (this.state.page * 100 < this.state.totalResults) {
+          await this.update({ page: this.state.page + 1 });
+          this.searchAlbums();
+        }
+      },
+
+      async prevPage() {
+        if (this.state.page > 1) {
+          await this.update({ page: this.state.page - 1 });
+          this.searchAlbums();
+        }
+      },
+
+      async firstPage() {
+        await this.update({ page: 1 });
+        this.searchAlbums();
+      },
+
+      goHome() {
+        this.update({ search: '', page: 1, type: 'release' });
+        this.searchAlbums();
+      },
+
+      onLogin() {
+        console.log("Bouton connexion cliqué");
+        this.props.onShowLogin?.();
+      },
+
+      onLogout() {
+        console.log("Bouton déconnexion cliqué");
+        this.props.onLogout?.();
+      },
+
+      handleClick(item) {
+        const id = getResourceIdFromUrl(item.resource_url);
+        if (this.state.type === 'artist') {
+          this.props.onShowArtist?.(id);
+        } else if (this.state.type === 'master') {
+          window.location.hash = `#/master/${id}`;
+        } else {
+          this.props.onShowRelease?.(id);
+        }
+      },
+
+      isFavorited(item) {
+        return this.state.favorites.some(fav => fav.id === item.id);
+      },
+
+      async toggleFavorite(item) {
+        try {
+          if (this.isFavorited(item)) {
+            await removeFavorite(item);
+            this.update({
+              favorites: this.state.favorites.filter(fav => fav.id !== item.id)
+            });
+          } else {
+            await addFavorite(item);
+            this.update({
+              favorites: [...this.state.favorites, item]
+            });
+          }
+        } catch (e) {
+          console.warn("Erreur Firebase : utilisateur non connecté ou problème favoris");
+        }
+      }
+    }
+  </script>
+
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background-color: #f7faff;
+      color: #333;
+    }
+    .navbar {
+      background-color: #1f2937;
+      color: #fff;
+      padding: 15px 0;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      box-shadow: 0 3px 8px rgba(0,0,0,0.15);
+    }
+    .navbar-container {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      max-width: 1200px;
+      margin: 0 auto;
+      width: 90%;
+    }
+    .logo {
+      font-size: 1.4rem;
+      font-weight: 700;
+      cursor: pointer;
+    }
+    .search-container {
+      display: flex;
+      gap: 6px;
+      width: 50%;
+    }
+    select, input, button {
+      padding: 8px 10px;
+      border-radius: 4px;
+      border: none;
+      font-size: 0.95rem;
+    }
+    select, input {
+      flex: 1;
+    }
+    button {
+      background-color: #3b82f6;
+      color: white;
+      cursor: pointer;
+    }
+    .btn-login {
+      background-color: #22c55e;
+      padding: 8px 12px;
+      border-radius: 5px;
+      cursor: pointer;
+      color: #fff;
+      font-weight: 600;
+    }
+    .btn-logout {
+      background-color: #e3342f;
+      padding: 8px 12px;
+      border-radius: 5px;
+      cursor: pointer;
+      color: #fff;
+      font-weight: 600;
+    }
+    .main-container {
+      max-width: 1200px;
+      margin: 40px auto;
+      padding: 20px;
+    }
+    .total-results {
+      margin-bottom: 20px;
+      font-size: 1.2rem;
+      text-align: center;
+    }
+    .albums {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 25px;
+    }
+    .album {
+      background-color: white;
+      padding: 15px;
+      border-radius: 10px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+      transition: transform 0.3s, box-shadow 0.3s;
+      text-align: center;
+    }
+    .album:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 6px 16px rgba(0,0,0,0.15);
+    }
+    .album img {
+      width: 100%;
+      height: 200px;
+      object-fit: cover;
+      border-radius: 8px;
+    }
+    .album p {
+      margin-top: 10px;
+      font-weight: 600;
+      color: #444;
+    }
+    .album-header {
+      display: flex;
+      align-items: center;
+      justify-content: flex-start;
+      gap: 8px;
+      font-weight: 600;
+      font-size: 14px;
+      color: #111827;
+      overflow: hidden;
+    }
+    .album-title {
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      overflow: hidden;
+      flex: 1;
+    }
+    .fav-icon {
+      font-size: 18px;
+      color: #f59e0b;
+      cursor: pointer;
+      user-select: none;
+    }
+    .pagination {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      margin-top: 30px;
+    }
+    .pagination button:disabled {
+      background-color: #cbd5e1;
+      cursor: not-allowed;
+    }
+    .favorites {
+      margin-top: 40px;
+      padding: 20px;
+      background-color: #fef3c7;
+      border: 1px solid #fcd34d;
+      border-radius: 8px;
+    }
+    .favorites h3 {
+      margin-bottom: 10px;
+    }
+    .favorites ul {
+      list-style: none;
+      padding-left: 0;
+    }
+    .favorites li {
+      padding: 6px 0;
+      border-bottom: 1px solid #fde68a;
+    }
+    .favorites-link {
+      margin-left: 1rem;
+      font-size: 1.5rem;
+      text-decoration: none;
+      color: gold;
+      transition: transform 0.2s;
+    }
+    .favorites-link:hover {
+      transform: scale(1.2);
+    }
+    .logo-container {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      color: white;
+    }
+  </style>
+</home-component>

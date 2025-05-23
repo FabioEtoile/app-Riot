@@ -1,0 +1,137 @@
+<search-component>
+  <div class="search-container">
+
+    <h2>Recherche sur Discogs</h2>
+
+    <input type="text" placeholder="Recherche..." value={state.query} onchange={updateQuery}>
+    <button onclick={search}>Chercher</button>
+
+    <ul if={state.results.length}>
+      <li each={result in state.results}>
+        {result.title} - {result.type}
+        <button class="fav-btn" onclick={() => toggleFavorite(result)}>
+          { isFavorited(result) ? '💔 Retirer des favoris' : '❤️ Ajouter aux favoris' }
+        </button>
+      </li>
+    </ul>
+
+    <p if={!state.results.length && state.hasSearched}>Aucun résultat trouvé.</p>
+    <p if={state.error} class="error-msg">{ state.error }</p>
+  </div>
+
+  <script>
+    import { searchDiscogs } from '../services/discogs'
+    import { getFavorites, addFavorite, removeFavorite } from '../services/favorites'
+
+
+    export default {
+      state: {
+        query: '',
+        results: [],
+        hasSearched: false,
+        error: '',
+        favorites: []
+      },
+
+      async onMounted() {
+        try {
+          const favs = await getFavorites()
+          this.update({ favorites: favs })
+        } catch (e) {
+          console.warn("Utilisateur non connecté ou erreur chargement favoris.")
+        }
+      },
+
+      updateQuery(e) {
+        this.update({ query: e.target.value })
+      },
+
+      async search() {
+        const query = this.state.query.trim()
+
+        if (!query) {
+          this.update({ error: "Merci de saisir une recherche." })
+          return
+        }
+
+        try {
+          const data = await searchDiscogs(query)
+          this.update({
+            results: data.results || [],
+            hasSearched: true,
+            error: ''
+          })
+        } catch (err) {
+          console.error("Erreur Discogs :", err.message)
+          this.update({ error: "Erreur Discogs : " + err.message })
+        }
+      },
+
+      isFavorited(item) {
+        return this.state.favorites.some(fav => fav.id === item.id)
+      },
+
+      async toggleFavorite(item) {
+        try {
+          if (this.isFavorited(item)) {
+            await removeFavorite(item)
+            this.update({
+              favorites: this.state.favorites.filter(fav => fav.id !== item.id)
+            })
+          } else {
+            await addFavorite(item)
+            this.update({
+              favorites: [...this.state.favorites, item]
+            })
+          }
+        } catch (e) {
+          this.update({ error: "Erreur Firebase : utilisateur non connecté." })
+        }
+      }
+    }
+  </script>
+
+  <style>
+    .search-container {
+      max-width: 600px;
+      margin: auto;
+      padding: 20px;
+    }
+
+    input, button {
+      width: 100%;
+      padding: 10px;
+      margin-top: 10px;
+      box-sizing: border-box;
+    }
+
+    button {
+      background-color: #007BFF;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+
+    .fav-btn {
+      margin-top: 5px;
+      background-color: #28a745;
+    }
+
+    ul {
+      margin-top: 20px;
+      padding-left: 0;  
+      list-style-type: none;
+    }
+
+    li {
+      padding: 10px;
+      border-bottom: 1px solid #ddd;
+    }
+
+    .error-msg {
+      color: red;
+      margin-top: 10px;
+    }
+  </style>
+</search-component>
