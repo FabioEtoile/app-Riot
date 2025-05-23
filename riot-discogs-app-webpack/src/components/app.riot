@@ -1,5 +1,5 @@
 <app>
-  <!-- Favorites -->
+
   <favorites-component
   if={state.hash === '#/favorites'}
   loggedIn={state.loggedIn}
@@ -7,9 +7,6 @@
   onShowRelease={onShowRelease}
   onShowArtist={onShowArtist}
   onShowMaster={onShowMaster} />
-
-
-  <!-- Home -->
   <home-component
     if={!state.showLogin && state.hash === '#/'}
     loggedIn={state.loggedIn}
@@ -19,20 +16,17 @@
     onShowMaster={onShowMaster}
     onLogout={onLogout} />
 
-  <!-- Auth -->
   <auth-component
     if={state.showLogin}
     onLoginSuccess={onLoginSuccess}
     onLogout={onLogout} />
 
-  <!-- Release -->
   <release-component
     if={state.hash.startsWith('#/release/')}
     loggedIn={state.loggedIn}
     onShowLogin={showLogin}
     onLogout={onLogout} />
 
-  <!-- Artist -->
   <artist-component
   if={state.hash.startsWith('#/artist/')}
   key={state.currentArtistId}
@@ -41,7 +35,6 @@
   onShowReleases={onShowReleases}
   onBack={onBackFromArtist} />
 
-<!-- Master -->
 <master-component
   if={state.hash.startsWith('#/master/')}
   onShowLogin={showLogin}
